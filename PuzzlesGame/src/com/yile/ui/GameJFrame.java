@@ -1,11 +1,16 @@
 package com.yile.ui;
 
+import cn.hutool.core.io.IoUtil;
+import com.yile.domain.GameInfo;
+
 import javax.swing.*;
 import javax.swing.border.BevelBorder;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import java.io.*;
+import java.util.Properties;
 import java.util.Random;
 
 public class GameJFrame extends JFrame implements KeyListener, ActionListener {
@@ -31,6 +36,21 @@ public class GameJFrame extends JFrame implements KeyListener, ActionListener {
     JMenuItem girlJMenuItem = new JMenuItem("美女");
     JMenuItem animalJMenuItem = new JMenuItem("动物");
     JMenuItem sportJMenuItem = new JMenuItem("运动");
+
+    JMenu saveJMenu = new JMenu("存档");
+    JMenu loadJMenu = new JMenu("读档");
+
+    JMenuItem saveItem0 = new JMenuItem("存档0(空)");
+    JMenuItem saveItem1 = new JMenuItem("存档1(空)");
+    JMenuItem saveItem2 = new JMenuItem("存档2(空)");
+    JMenuItem saveItem3 = new JMenuItem("存档3(空)");
+    JMenuItem saveItem4 = new JMenuItem("存档4(空)");
+
+    JMenuItem loadItem0 = new JMenuItem("读档0(空)");
+    JMenuItem loadItem1 = new JMenuItem("读档1(空)");
+    JMenuItem loadItem2 = new JMenuItem("读档2(空)");
+    JMenuItem loadItem3 = new JMenuItem("读档3(空)");
+    JMenuItem loadItem4 = new JMenuItem("读档4(空)");
 
     //初始化游戏界面
     public GameJFrame() {
@@ -156,12 +176,27 @@ public class GameJFrame extends JFrame implements KeyListener, ActionListener {
         JMenu aboutJMenu = new JMenu("关于我们");
         JMenu ChangeJMenu = new JMenu("更换图片");
 
+        //把5个存档，添加到saveJMenu中
+        saveJMenu.add(saveItem0);
+        saveJMenu.add(saveItem1);
+        saveJMenu.add(saveItem2);
+        saveJMenu.add(saveItem3);
+        saveJMenu.add(saveItem4);
+
+        //把5个读档，添加到loadJMenu中
+        loadJMenu.add(loadItem0);
+        loadJMenu.add(loadItem1);
+        loadJMenu.add(loadItem2);
+        loadJMenu.add(loadItem3);
+        loadJMenu.add(loadItem4);
 
 
-        //将选项中的内容添加到选项中
+        //将功能选项中的内容添加到功能选项中
         functionJMenu.add(replayJMenuItem);
         functionJMenu.add(reloginJMenuItem);
         functionJMenu.add(closeJMenuItem);
+        functionJMenu.add(saveJMenu);
+        functionJMenu.add(loadJMenu);
         aboutJMenu.add(accountJMenuItem);
         //将changJMenu添加到功能选项下，注：JMenu可以同级嵌套
         functionJMenu.add(ChangeJMenu);
@@ -185,8 +220,54 @@ public class GameJFrame extends JFrame implements KeyListener, ActionListener {
         animalJMenuItem.addActionListener(this);
         sportJMenuItem.addActionListener(this);
 
+        saveItem0.addActionListener(this);
+        saveItem1.addActionListener(this);
+        saveItem2.addActionListener(this);
+        saveItem3.addActionListener(this);
+        saveItem4.addActionListener(this);
+        loadItem0.addActionListener(this);
+        loadItem1.addActionListener(this);
+        loadItem2.addActionListener(this);
+        loadItem3.addActionListener(this);
+        loadItem4.addActionListener(this);
+
+        //同步数据：读取存档信息，修改条目标题内容
+        getGameInfo();
+
         //给整个页面设置菜单
         this.setJMenuBar(jMenuBar);
+    }
+
+    //读取存档文件信息并修改条目内容
+    private void getGameInfo() {
+        //创建一个File表示存档文件夹的路径
+        File file = new File("D:\\java代码\\JigsawPuzzlesGame\\save");
+        //遍历文件夹获取到文件夹数组
+        File[] files = file.listFiles();
+        //遍历文件夹数组
+        for (File file1 : files) {
+            //获取每一个存档文件中的游戏信息
+            GameInfo gameInfo;
+            try {
+                //利用反序列化流进行读取
+                ObjectInputStream ois = new ObjectInputStream(new FileInputStream(file1));
+                gameInfo = (GameInfo) ois.readObject();
+                ois.close();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            } catch (ClassNotFoundException e) {
+                throw new RuntimeException(e);
+            }
+            //获取出游戏信息对象中的步数数据以修改条目内容
+            int step = gameInfo.getStep();
+            //获取每一个存档文件的文件名后面的序号
+            int index = file1.getName().charAt(4) - '0';
+
+            //修改条目内容
+            saveJMenu.getItem(index).setText("存档" + index + "(" + step + ")");
+            loadJMenu.getItem(index).setText("读档" + index + "(" + step + ")");
+        }
+
     }
 
     private void initJFrame() {
@@ -378,7 +459,11 @@ public class GameJFrame extends JFrame implements KeyListener, ActionListener {
             //关闭当前页面
             this.setVisible(false);
             //打开登录页面
-            new LoginJFrame();
+            try {
+                new LoginJFrame();
+            } catch (IOException ex) {
+                throw new RuntimeException(ex);
+            }
         }
         else if(obj == closeJMenuItem){
             //关闭游戏
@@ -388,16 +473,33 @@ public class GameJFrame extends JFrame implements KeyListener, ActionListener {
         else if(obj == accountJMenuItem){
             //公众号
             System.out.println("关于公众号");
+            //从配置文件中读取二维码图片路径
+            //创建properties集合
+            Properties prop = new Properties();
+            try {
+                //创建输入流
+                FileInputStream fis = new FileInputStream("D:\\java代码\\JigsawPuzzlesGame\\game.properties");
+                //读取文件中的数据
+                prop.load(fis);
+                //释放资源
+                fis.close();
+            } catch (IOException ex) {
+                throw new RuntimeException(ex);
+            }
+
+            //获取到集合中的数据,即图片路径
+            String value = (String) prop.get("account");
+
             //创建弹窗对象
             JDialog jDialog = new JDialog();
             //创建图片管理容器JLabel
-            JLabel jLabel = new JLabel(new ImageIcon("PuzzlesGame\\sucai\\sucai\\image\\about.png"));
+            JLabel jLabel = new JLabel(new ImageIcon(value));
             //设置图片位置和大小
-            jLabel.setBounds(0,0,258,258);
+            jLabel.setBounds(0,0,705,715);
             //将图片添加到弹框中
             jDialog.getContentPane().add(jLabel);
             //给弹框设置大小
-            jDialog.setSize(344,344);
+            jDialog.setSize(800,800);
             //设置弹窗置顶
             jDialog.setAlwaysOnTop(true);
             //给弹框设置居中
@@ -416,10 +518,13 @@ public class GameJFrame extends JFrame implements KeyListener, ActionListener {
             Random r = new Random();
             int index = r.nextInt(girlArr.length);
             path = "PuzzlesGame\\sucai\\sucai\\image\\girl\\" + girlArr[index] + "\\";
+            //将步数清0
+            step = 0;
             //调用方法打乱图片
             this.initData();
             //调用方法重新加载图片
             this.initImage();
+
         }
         else if(obj == animalJMenuItem){
             //更换动物图片
@@ -446,6 +551,68 @@ public class GameJFrame extends JFrame implements KeyListener, ActionListener {
             this.initData();
             //调用方法加载新图片
             this.initImage();
+        }
+        else if(obj == saveItem0 || obj == saveItem1 || obj == saveItem2 || obj == saveItem3 ||obj == saveItem4){
+            //存档：可以使用序列化流将游戏的主要信息以对象形式保存到文件中
+            //获取到被点击的条目的对象
+            JMenuItem item = (JMenuItem) obj;
+            //获取被点击条目的索引
+            int index = item.getText().charAt(2) - '0';
+
+            //创建游戏信息对象并为其赋值
+            GameInfo gameInfo = new GameInfo(newArr,x,y,path,step);
+
+            //创建序列化流并关联文件，将游戏信息对象写入文件中
+            ObjectOutputStream oos = null;
+            try {
+                oos = new ObjectOutputStream(new FileOutputStream("D:\\java代码\\JigsawPuzzlesGame\\save\\save" + index + ".data"));
+            } catch (IOException ex) {
+                throw new RuntimeException(ex);
+            }
+            //利用hutool中的工具类方法将游戏信息对象写入文件中并实现自动关流
+            IoUtil.writeObj(oos,true,gameInfo);
+
+            //修改被点击的条目标题和读档的条目标题
+            item.setText("存档" + index + "("+  step +"步)");
+            loadJMenu.getItem(index).setText("读档" + index + "("+  step +"步)");
+
+
+        }else if(obj == loadItem0 || obj == loadItem1 || obj == loadItem2 || obj == loadItem3 ||obj == loadItem4){
+            //读档
+            JMenuItem item = (JMenuItem) obj;
+            //获取被点击条目的索引
+            int index = item.getText().charAt(2) - '0';
+            GameInfo gameInfo = null;
+
+            try {
+                //利用反序列化流读取save文件中的信息
+                ObjectInputStream  ois = new ObjectInputStream(new FileInputStream("D:\\java代码\\JigsawPuzzlesGame\\save\\save" + index + ".data"));
+                gameInfo = (GameInfo) ois.readObject();
+                ois.close();
+            } catch (IOException ex) {
+                throw new RuntimeException(ex);
+            } catch (ClassNotFoundException ex) {
+                throw new RuntimeException(ex);
+            }
+
+
+            //将游戏信息对象中的信息获取出来
+            int[][] gameInfoArr = gameInfo.getArr();
+            int x1 = gameInfo.getX();
+            int y1 = gameInfo.getY();
+            String path1 = gameInfo.getPath();
+            int step1 = gameInfo.getStep();
+
+            //将数据信息重新赋值给全局变量
+            newArr = gameInfoArr;
+            x = x1;
+            y = y1;
+            path = path1;
+            step = step1;
+
+            //刷新界面并重新加载图片
+            initImage();
+
         }
 
     }
